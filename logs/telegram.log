@@ -35946,3 +35946,10 @@ information about how to avoid this problem.[0m
 [33m2024-02-06 20:25:20[0m - [32mW1DEV1NE - [36mINFO - [31mUser 259790855 clicked 'Decrypt VOD' button.[0m
 [33m2024-02-06 20:25:26[0m - [32mW1DEV1NE - [36mINFO - [31mUser 259790855 selected 'Channel Decrypt' option.[0m
 [33m2024-02-06 20:25:43[0m - [32mW1DEV1NE - [36mERROR - [31mError sending KID Key request for user 259790855: 500 Server Error: Internal Server Error for url: https://kepala-pantas.xyz/dev/widevine/decryptChannel[0m
+[33m2024-02-06 20:35:16[0m - [32mW1DEV1NE - [36mINFO - [31mWIDEVINE BOT START[0m
+[33m2024-02-06 20:36:09[0m - [32mW1DEV1NE - [36mINFO - [31mUser 1600151862 (NoWomaNoCry) started the bot.[0m
+[33m2024-02-06 20:36:15[0m - [32mW1DEV1NE - [36mINFO - [31mUser 54817905 (nemoecii) started the bot.[0m
+[33m2024-02-06 20:36:26[0m - [32mW1DEV1NE - [36mINFO - [31mUser 54817905 clicked 'Decrypt VOD' button.[0m
+[33m2024-02-06 20:40:03[0m - [32mW1DEV1NE - [36mINFO - [31mUser 1479224942 requested help.[0m
+[33m2024-02-06 20:40:09[0m - [32mW1DEV1NE - [36mINFO - [31mUser 1479224942 initiated a payment. (Payment feature coming soon)[0m
+[33m2024-02-06 20:40:22[0m - [32mW1DEV1NE - [36mINFO - [31mUser 1479224942 requested information about the bot.[0m

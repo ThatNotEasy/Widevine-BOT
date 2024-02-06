@@ -142,12 +142,12 @@ def handle_callback_query(call):
     else:
         bot.edit_message_reply_markup(chat_id, call.message.message_id, reply_markup=None)
 
-def ask_bearer_token(message):
+def ask_bearer_token(user_id, message):
     user_id = message.from_user.id
     bot.send_message(user_id, "🔒 For avoid manipulation, please provide the same Bearer Token:\n\n(formats: Bearer XXXXX)")
     bot.register_next_step_handler(message, save_bearer_token)
 
-def save_bearer_token(message):
+def save_bearer_token(user_id, message):
     user_id = message.from_user.id
     bearer_token = message.text.strip()
     token_data = {"JWTs": bearer_token}

@@ -1,8 +1,6 @@
 import telebot
-import getmac
 import requests
 import json
-import shutil
 from telebot import types
 from modules.logging import setup_logging
 from modules.config import load_configurations
@@ -34,6 +32,7 @@ def get_user_ip():
         logger.error(f"Error fetching IP address: {e}")
         return None
 
+
 def get_user_mac():
     try:
         mac_address = getmac.get_mac_address()
@@ -42,58 +41,71 @@ def get_user_mac():
         logger.error(f"Error fetching MAC address: {e}")
         return None
 
+
 @bot.message_handler(commands=['start', 'stop', 'about', 'help', 'payment'])
 def handle_commands(message):
+    if message.chat.type == 'private':
+        user_id = message.from_user.id
+
+        if message.text.startswith('/start'):
+            send_welcome_message(message)
+
+        elif message.text.startswith('/stop'):
+            bot.send_message(user_id, "⛔ The bot has been stopped. If you have questions, feel free to start it again.")
+
+        elif message.text.startswith('/about'):
+            bot.send_message(user_id, "🤖 Widevine Extractor BOT is designed to help you decrypt VOD content. "
+                                      "Feel free to explore its features.")
+
+        elif message.text.startswith('/help'):
+            send_help_message(message)
+
+        elif message.text.startswith('/payment'):
+            initiate_payment(message)
+
+    elif message.chat.type == 'group' or message.chat.type == 'supergroup':
+        bot.reply_to(message, "🤖 This bot currently does not support group messages.")
+
+
+def send_welcome_message(message):
+    user_id, username, chat_id = message.from_user.id, message.from_user.username, message.chat.id
+    welcome_message = (
+        f"👋 Hello there! Welcome to the Widevine Extractor BOT.\n\n"
+        f"UserID: {user_id}\n"
+        f"Username: {username}\n\n"
+        "Explore the following features:\n"
+        "- Need assistance? Just type /help anytime.\n\n"
+        f"- Maxis Sabah BOT: https://t.me/maxshits_bot\n"
+        f"- Author: https://t.me/SurpriseMTFK"
+    )
+    bot.send_message(chat_id, welcome_message, reply_markup=start_menu_markup)
+    logger.info(f"User {user_id} ({username}) started the bot.")
+
+
+def send_help_message(message):
     user_id = message.from_user.id
+    help_message = (
+        "📋 Command list:\n"
+        "/start - Start the bot\n"
+        "/stop - Stop the bot\n"
+        "/about - About the bot\n"
+        "/help - Display this help message\n"
+        "/payment - Initiate a payment (coming soon)"
+    )
+    bot.send_message(user_id, help_message)
+    logger.info(f"User {user_id} requested help.")
 
-    if message.text.startswith('/start'):
-        user_id, username, chat_id = message.from_user.id, message.from_user.username, message.chat.id
-        ip_address, mac_address = get_user_ip(), get_user_mac()
 
-        welcome_message = (
-            f"👋 Hello there! Welcome to the Widevine Extractor BOT.\n\n"
-            f"UserID: {user_id}\n"
-            f"Username: {username}\n\n"
-            # f"IP Address: {ip_address}\n"
-            # f"MAC Address: {mac_address}\n\n"
-            "Explore the following features:\n"
-            "- Need assistance? Just type /help anytime.\n\n"
-            f"- Maxis Sabah BOT: https://t.me/maxshits_bot\n"
-            f"- Author: https://t.me/SurpriseMTFK"
-        )
+def initiate_payment(message):
+    user_id = message.from_user.id
+    logger.info(f"User {user_id} initiated a payment. (Payment feature coming soon)")
 
-        bot.send_message(chat_id, welcome_message, reply_markup=start_menu_markup)
-        logger.info(f"User {user_id} ({username}) started the bot.")
+    # Check if the user is authorized
+    if user_id not in AUTHORIZED_USER_IDS:
+        send_unauthorized_image(message.chat.id, user_id)
+    else:
+        bot.send_message(user_id, "💳 The payment feature is currently under development. Stay tuned!")
 
-    elif message.text.startswith('/stop'):
-        logger.info(f"User {user_id} stopped the bot.")
-        bot.send_message(message.chat.id, "⛔ The bot has been stopped. If you have questions, feel free to start it again.")
-
-    elif message.text.startswith('/about'):
-        logger.info(f"User {user_id} requested information about the bot.")
-        bot.send_message(message.chat.id, "🤖 Widevine Extractor BOT is designed to help you decrypt VOD content. "
-                                          "Feel free to explore its features.")
-
-    elif message.text.startswith('/help'):
-        logger.info(f"User {user_id} requested help.")
-        help_message = (
-            "📋 Command list:\n"
-            "/start - Start the bot\n"
-            "/stop - Stop the bot\n"
-            "/about - About the bot\n"
-            "/help - Display this help message\n"
-            "/payment - Initiate a payment (coming soon)"
-        )
-        bot.send_message(message.chat.id, help_message)
-
-    elif message.text.startswith('/payment'):
-        logger.info(f"User {user_id} initiated a payment. (Payment feature coming soon)")
-
-        # Check if the user is authorized
-        if user_id not in AUTHORIZED_USER_IDS:
-            send_unauthorized_image(message.chat.id, user_id)
-        else:
-            bot.send_message(message.chat.id, "💳 The payment feature is currently under development. Stay tuned!")
 
 def send_unauthorized_image(chat_id, user_id):
     qr_code_path = 'qrcode.png'
@@ -110,14 +122,11 @@ def send_unauthorized_image(chat_id, user_id):
                     "Thank you for your cooperation!",
         )
 
+
 @bot.callback_query_handler(func=lambda call: True)
 def handle_callback_query(call):
     user_id = call.from_user.id
     chat_id = call.message.chat.id
-
-    # Check if the message has a reply markup to edit
-    if call.message.reply_markup is not None:
-        bot.edit_message_reply_markup(chat_id=chat_id, message_id=call.message.message_id, reply_markup=None)
 
     if call.data == 'astrogo_callback':
         logger.info(f"User {user_id} clicked 'ASTRO GOT' button.")
@@ -142,10 +151,12 @@ def handle_callback_query(call):
     else:
         bot.edit_message_reply_markup(chat_id, call.message.message_id, reply_markup=None)
 
-def ask_bearer_token(user_id, message):
+
+def ask_bearer_token(message):
     user_id = message.from_user.id
-    bot.send_message(user_id, "🔒 For avoid manipulation, please provide the same Bearer Token:\n\n(formats: Bearer XXXXX)")
-    bot.register_next_step_handler(message, save_bearer_token)
+    chat_id = message.chat.id
+    bot.send_message(chat_id, "🔒 For avoid manipulation, please provide the same Bearer Token:\n\n(formats: Bearer XXXXX)")
+    bot.register_next_step_handler(message, lambda m: save_bearer_token(user_id, m))
 
 def save_bearer_token(user_id, message):
     user_id = message.from_user.id
@@ -162,6 +173,7 @@ def save_bearer_token(user_id, message):
 
     with open(f"temp_token_{user_id}.json", "w") as f:
         json.dump(token_data, f)
+
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('save_token_'))
 def handle_save_token_callback(call):
@@ -188,6 +200,7 @@ def handle_save_token_callback(call):
         bot.send_message(user_id, "❌ Bearer Token not saved.", reply_markup=options_markup)
     else:
         bot.edit_message_reply_markup(user_id, message_id, reply_markup=options_markup)
+
 
 def perform_decrypt(user_id, message, options_markup, decrypt_type):
     try:

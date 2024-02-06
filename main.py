@@ -2,6 +2,7 @@ import telebot
 import getmac
 import requests
 import json
+import shutil
 from telebot import types
 from modules.logging import setup_logging
 from modules.config import load_configurations
@@ -15,7 +16,7 @@ ENDPOINT = config["API"]["ENDPOINT"]
 
 bot = telebot.TeleBot(TOKEN)
 
-start_menu_markup = types.InlineKeyboardMarkup(row_width=2)
+start_menu_markup = types.InlineKeyboardMarkup(row_width=3)
 astrogo_button = types.InlineKeyboardButton("🔓 ASTRO GO", callback_data='astrogo_callback')
 netflix_button = types.InlineKeyboardButton("🔓 NETFLIX", callback_data='netflix_callback')
 viu_button = types.InlineKeyboardButton("🔓 VIU", callback_data='viu_callback')
@@ -114,11 +115,65 @@ def handle_callback_query(call):
     user_id = call.from_user.id
     chat_id = call.message.chat.id
 
-    # Remove the inline keyboard after any button is clicked
-    bot.edit_message_reply_markup(chat_id=chat_id, message_id=call.message.message_id, reply_markup=None)
+    # Check if the message has a reply markup to edit
+    if call.message.reply_markup is not None:
+        bot.edit_message_reply_markup(chat_id=chat_id, message_id=call.message.message_id, reply_markup=None)
 
     if call.data == 'astrogo_callback':
-        logger.info(f"User {user_id} clicked 'Decrypt VOD' button.")
+        logger.info(f"User {user_id} clicked 'ASTRO GOT' button.")
+        bot.send_message(user_id, "🔒 Please provide your Bearer Token first,\nbefore using the next features.\n\n(formats: Bearer XXXXX)")
+        bot.register_next_step_handler(call.message, ask_bearer_token)
+
+    elif call.data in ['single_decrypt', 'massive_decrypt', 'channel_decrypt']:
+        if str(user_id) not in map(str, AUTHORIZED_USER_IDS):
+            return send_unauthorized_image(chat_id, user_id)
+        else:
+            logger.info(f"User {user_id} selected '{call.data.capitalize().replace('_', ' ')}' option.")
+            msg = bot.send_message(chat_id, f"🔑 Please provide the {' '.join(call.data.split('_'))} URL/ID:")
+            options_markup = types.InlineKeyboardMarkup(row_width=2)
+            buttons = [
+                types.InlineKeyboardButton("🔑 Season/Episode Decrypt", callback_data='single_decrypt'),
+                types.InlineKeyboardButton("🎬 Movie Decrypt", callback_data='massive_decrypt'),
+                types.InlineKeyboardButton("📺 Channel Decrypt", callback_data='channel_decrypt'),
+            ]
+            options_markup.add(*buttons)
+            bot.register_next_step_handler(msg, lambda m: perform_decrypt(user_id, m, options_markup, call.data))
+
+    else:
+        bot.edit_message_reply_markup(chat_id, call.message.message_id, reply_markup=None)
+
+def ask_bearer_token(message):
+    user_id = message.from_user.id
+    bot.send_message(user_id, "🔒 For avoid manipulation, please provide the same Bearer Token:\n\n(formats: Bearer XXXXX)")
+    bot.register_next_step_handler(message, save_bearer_token)
+
+def save_bearer_token(message):
+    user_id = message.from_user.id
+    bearer_token = message.text.strip()
+    token_data = {"JWTs": bearer_token}
+
+    keyboard = types.InlineKeyboardMarkup(row_width=2)
+    yes_button = types.InlineKeyboardButton("YES ✅", callback_data='save_token_yes')
+    no_button = types.InlineKeyboardButton("NO ❌", callback_data='save_token_no')
+    keyboard.add(yes_button, no_button)
+
+    confirmation_message = "Are you sure you want to save the Bearer Token?"
+    bot.send_message(user_id, confirmation_message, reply_markup=keyboard)
+
+    with open(f"temp_token_{user_id}.json", "w") as f:
+        json.dump(token_data, f)
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith('save_token_'))
+def handle_save_token_callback(call):
+    user_id = call.from_user.id
+    message_id = call.message.message_id
+
+    if call.data == 'save_token_yes':
+        temp_token_path = f"temp_token_{user_id}.json"
+        main_token_path = "bearer_token.json"
+        shutil.move(temp_token_path, main_token_path)
+
+        bot.send_message(user_id, "✅ Bearer Token saved successfully!")
         options_markup = types.InlineKeyboardMarkup(row_width=2)
         buttons = [
             types.InlineKeyboardButton("🔑 Season/Episode Decrypt", callback_data='single_decrypt'),
@@ -126,106 +181,36 @@ def handle_callback_query(call):
             types.InlineKeyboardButton("📺 Channel Decrypt", callback_data='channel_decrypt'),
         ]
         options_markup.add(*buttons)
-        bot.send_message(chat_id, "Choose the decryption option:", reply_markup=options_markup)
+        bot.send_message(user_id, "Choose the decryption option:", reply_markup=options_markup)
 
-    elif call.data == 'single_decrypt':
-        if str(user_id) not in map(str, AUTHORIZED_USER_IDS):
-            return send_unauthorized_image(chat_id, user_id)
-        else:
-            logger.info(f"User {user_id} selected 'Season/Episode Decrypt' option.")
-            msg = bot.send_message(chat_id, "🔑 Please provide Season/Show (Episode) URL/ID:")
-            bot.register_next_step_handler(msg, lambda m: perform_single_decrypt(user_id, m, options_markup))
-
-    elif call.data == 'massive_decrypt':
-        if str(user_id) not in map(str, AUTHORIZED_USER_IDS):
-            return send_unauthorized_image(chat_id, user_id)
-        else:
-            logger.info(f"User {user_id} selected 'Movie Decrypt' option.")
-            msg = bot.send_message(chat_id, "🔑 Please provide the Movie VOD URL/ID:")
-            bot.register_next_step_handler(msg, lambda m: perform_massive_decrypt(user_id, m, options_markup))
-
-    elif call.data == 'channel_decrypt':
-        if str(user_id) not in map(str, AUTHORIZED_USER_IDS):
-            return send_unauthorized_image(chat_id, user_id)
-        else:
-            logger.info(f"User {user_id} selected 'Channel Decrypt' option.")
-            msg = bot.send_message(chat_id, "🔑 Please provide the Channel ID:")
-            bot.register_next_step_handler(msg, lambda m: perform_channel_decrypt(user_id, m, options_markup))
+    elif call.data == 'save_token_no':
+        bot.delete_message(user_id, message_id)
+        bot.send_message(user_id, "❌ Bearer Token not saved.", reply_markup=options_markup)
     else:
-        bot.edit_message_reply_markup(chat_id, call.message.message_id, reply_markup=None)
+        bot.edit_message_reply_markup(user_id, message_id, reply_markup=options_markup)
 
-def perform_single_decrypt(user_id, message, options_markup):
+def perform_decrypt(user_id, message, options_markup, decrypt_type):
     try:
-        show_id_payload = {"show_id": message.text, "JWTs": message.text}
-        show_url = f"{ENDPOINT}/dev/widevine/decryptShowVod"
+        with open(f"temp_token_{user_id}.json", "r") as f:
+            token_data = json.load(f)
+            bearer_token = token_data.get("JWTs", "")
 
-        bot.send_message(user_id, "Please be patient .. ❗️")
+        payload = {}
+        endpoint = ""
 
-        response = requests.post(show_url, json=show_id_payload)
-        response.raise_for_status()
+        if decrypt_type == 'single_decrypt':
+            payload = {"show_id": message.text, "JWTs": bearer_token}
+            endpoint = f"{ENDPOINT}/dev/widevine/decryptShowVod"
+        elif decrypt_type == 'massive_decrypt':
+            payload = {"vod_id": message.text, "JWTs": bearer_token}
+            endpoint = f"{ENDPOINT}/dev/widevine/decryptVod"
+        elif decrypt_type == 'channel_decrypt':
+            payload = {"channel_id": message.text, "JWTs": bearer_token}
+            endpoint = f"{ENDPOINT}/dev/widevine/decryptChannel"
 
-        response_data = response.json().get('responseData', {})
-        if response_data:
-            key = response_data.get('key')
-            kid = response_data.get('kid')
-            mpd_url = response_data.get('mpdURL')
+        bot.send_message(user_id, "A request to explore content is being processed. This may take a while depending on the size of the content and your network speed. Thank you for your patience! ⏳")
 
-            success_message = (
-                f"🔓 Decryption request successful!\n\n"
-                f"Key: {key}\n"
-                f"KID: {kid}\n"
-                f"MPD: {mpd_url}\n\n"
-                "You can use this information for further playback."
-            )
-
-            bot.send_message(user_id, success_message)
-            logger.info(f"Decryption successful for user {user_id}: Key={key}, KID={kid}, MPD={mpd_url}")
-        else:
-            bot.send_message(user_id, "❌ Decryption response format is invalid. Please try again later.", reply_markup=options_markup)
-
-    except requests.RequestException as e:
-        logger.error(f"Error sending KID Key request for user {user_id}: {e}")
-        bot.send_message(user_id, "❌ An error occurred while processing your request. Please try again later.", reply_markup=options_markup)
-
-def perform_massive_decrypt(user_id, message, options_markup):
-    try:
-        vod_id_payload = {"vod_id": message.text, "JWTs": message.text}
-        vod_url = f"{ENDPOINT}/dev/widevine/decryptVod"
-        bot.send_message(user_id, "Please be patient .. ❗️")
-
-        response = requests.post(vod_url, json=vod_id_payload)
-        response.raise_for_status()
-
-        response_data = response.json().get('responseData', {})
-        if response_data:
-            key = response_data.get('key')
-            kid = response_data.get('kid')
-            mpd_url = response_data.get('mpdURL')
-
-            success_message = (
-                f"🔓 Decryption request successful!\n\n"
-                f"Key: {key}\n"
-                f"KID: {kid}\n"
-                f"MPD: {mpd_url}\n\n"
-                "You can use this information for further playback."
-            )
-
-            bot.send_message(user_id, success_message)
-            logger.info(f"Decryption successful for user {user_id}: Key={key}, KID={kid}, MPD={mpd_url}")
-        else:
-            bot.send_message(user_id, "❌ Decryption response format is invalid. Please try again later.", reply_markup=options_markup)
-
-    except requests.RequestException as e:
-        logger.error(f"Error sending KID Key request for user {user_id}: {e}")
-        bot.send_message(user_id, "❌ An error occurred while processing your request. Please try again later.", reply_markup=options_markup)
-
-def perform_channel_decrypt(user_id, message, options_markup):
-    try:
-        channel_id_payload = {"channel_id": message.text, "JWTs": message.text}
-        channel_url = f"{ENDPOINT}/dev/widevine/decryptChannel"
-        bot.send_message(user_id, "Please be patient .. ❗️")
-
-        response = requests.post(channel_url, json=channel_id_payload)
+        response = requests.post(endpoint, json=payload)
         response.raise_for_status()
 
         response_data = response.json().get('responseData', {})

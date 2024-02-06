@@ -1,6 +1,7 @@
 import telebot
 import requests
 import json
+import shutil
 from telebot import types
 from modules.logging import setup_logging
 from modules.config import load_configurations
@@ -9,7 +10,7 @@ config = load_configurations()
 logger = setup_logging()
 
 TOKEN = config["TELEGRAM"]["TOKEN"]
-AUTHORIZED_USER_IDS = json.loads(config["TELEGRAM"]["ID"])
+AUTHORIZED_USER_IDS = set(json.loads(config["TELEGRAM"]["ID"]))
 ENDPOINT = config["API"]["ENDPOINT"]
 
 bot = telebot.TeleBot(TOKEN)
@@ -44,9 +45,9 @@ def get_user_mac():
 
 @bot.message_handler(commands=['start', 'stop', 'about', 'help', 'payment'])
 def handle_commands(message):
-    if message.chat.type == 'private':
-        user_id = message.from_user.id
+    user_id = message.from_user.id
 
+    if message.chat.type == 'private':
         if message.text.startswith('/start'):
             send_welcome_message(message)
 
@@ -64,7 +65,11 @@ def handle_commands(message):
             initiate_payment(message)
 
     elif message.chat.type == 'group' or message.chat.type == 'supergroup':
-        bot.reply_to(message, "🤖 This bot currently does not support group messages.")
+        if message.chat.id == -1002088593784:  # Check if it's the specific group ID
+            if message.text.startswith('/start'):
+                send_welcome_message(message)
+        else:
+            bot.reply_to(message, "🤖 This bot currently does not support group messages.")
 
 
 def send_welcome_message(message):
@@ -130,7 +135,7 @@ def handle_callback_query(call):
 
     if call.data == 'astrogo_callback':
         logger.info(f"User {user_id} clicked 'ASTRO GOT' button.")
-        bot.send_message(user_id, "🔒 Please provide your Bearer Token first,\nbefore using the next features.\n\n(formats: Bearer XXXXX)")
+        bot.send_message(chat_id, "🔒 Please provide your Bearer Token first,\nbefore using the next features.\n\n(formats: Bearer XXXXX)")
         bot.register_next_step_handler(call.message, ask_bearer_token)
 
     elif call.data in ['single_decrypt', 'massive_decrypt', 'channel_decrypt']:
@@ -156,11 +161,10 @@ def ask_bearer_token(message):
     user_id = message.from_user.id
     chat_id = message.chat.id
     bot.send_message(chat_id, "🔒 For avoid manipulation, please provide the same Bearer Token:\n\n(formats: Bearer XXXXX)")
-    bot.register_next_step_handler(message, lambda m: save_bearer_token(user_id, m))
+    bot.register_next_step_handler(message, lambda m: save_bearer_token(None, user_id, m))
 
 
-def save_bearer_token(user_id, message):
-    user_id = message.from_user.id
+def save_bearer_token(call, user_id, message):
     bearer_token = message.text.strip()
     token_data = {"JWTs": bearer_token}
 
@@ -174,12 +178,6 @@ def save_bearer_token(user_id, message):
 
     with open(f"temp_token_{user_id}.json", "w") as f:
         json.dump(token_data, f)
-
-
-@bot.callback_query_handler(func=lambda call: call.data.startswith('save_token_'))
-def handle_save_token_callback(call):
-    user_id = call.from_user.id
-    message_id = call.message.message_id
 
     if call.data == 'save_token_yes':
         temp_token_path = f"temp_token_{user_id}.json"
@@ -197,10 +195,10 @@ def handle_save_token_callback(call):
         bot.send_message(user_id, "Choose the decryption option:", reply_markup=options_markup)
 
     elif call.data == 'save_token_no':
-        bot.delete_message(user_id, message_id)
-        bot.send_message(user_id, "❌ Bearer Token not saved.", reply_markup=options_markup)
+        bot.delete_message(user_id, message.message_id)
+        bot.send_message(user_id, "❌ Bearer Token not saved.", reply_markup=keyboard)
     else:
-        bot.edit_message_reply_markup(user_id, message_id, reply_markup=options_markup)
+        bot.edit_message_reply_markup(user_id, message.message_id, reply_markup=keyboard)
 
 
 def perform_decrypt(user_id, message, options_markup, decrypt_type):

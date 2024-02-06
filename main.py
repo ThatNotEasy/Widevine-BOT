@@ -176,10 +176,7 @@ def save_bearer_token(call, user_id, message):
     confirmation_message = "Are you sure you want to save the Bearer Token?"
     bot.send_message(user_id, confirmation_message, reply_markup=keyboard)
 
-    with open(f"temp_token_{user_id}.json", "w") as f:
-        json.dump(token_data, f)
-
-    if call.data == 'save_token_yes':
+    if call and call.data == 'save_token_yes':
         temp_token_path = f"temp_token_{user_id}.json"
         main_token_path = "bearer_token.json"
         shutil.move(temp_token_path, main_token_path)
@@ -194,11 +191,11 @@ def save_bearer_token(call, user_id, message):
         options_markup.add(*buttons)
         bot.send_message(user_id, "Choose the decryption option:", reply_markup=options_markup)
 
-    elif call.data == 'save_token_no':
+    elif call and call.data == 'save_token_no':
         bot.delete_message(user_id, message.message_id)
         bot.send_message(user_id, "❌ Bearer Token not saved.", reply_markup=keyboard)
     else:
-        bot.edit_message_reply_markup(user_id, message.message_id, reply_markup=keyboard)
+        bot.send_message(user_id, "Unexpected error occurred. Please try again later.")
 
 
 def perform_decrypt(user_id, message, options_markup, decrypt_type):

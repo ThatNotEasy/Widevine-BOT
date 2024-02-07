@@ -1,7 +1,7 @@
 import telebot
+import getmac
 import requests
 import json
-import shutil
 from telebot import types
 from modules.logging import setup_logging
 from modules.config import load_configurations
@@ -10,7 +10,7 @@ config = load_configurations()
 logger = setup_logging()
 
 TOKEN = config["TELEGRAM"]["TOKEN"]
-AUTHORIZED_USER_IDS = set(json.loads(config["TELEGRAM"]["ID"]))
+AUTHORIZED_USER_IDS = json.loads(config["TELEGRAM"]["ID"])
 ENDPOINT = config["API"]["ENDPOINT"]
 
 bot = telebot.TeleBot(TOKEN)
@@ -33,7 +33,6 @@ def get_user_ip():
         logger.error(f"Error fetching IP address: {e}")
         return None
 
-
 def get_user_mac():
     try:
         mac_address = getmac.get_mac_address()
@@ -42,75 +41,58 @@ def get_user_mac():
         logger.error(f"Error fetching MAC address: {e}")
         return None
 
-
 @bot.message_handler(commands=['start', 'stop', 'about', 'help', 'payment'])
 def handle_commands(message):
     user_id = message.from_user.id
 
-    if message.chat.type == 'private':
-        if message.text.startswith('/start'):
-            send_welcome_message(message)
+    if message.text.startswith('/start'):
+        user_id, username, chat_id = message.from_user.id, message.from_user.username, message.chat.id
+        ip_address, mac_address = get_user_ip(), get_user_mac()
 
-        elif message.text.startswith('/stop'):
-            bot.send_message(user_id, "⛔ The bot has been stopped. If you have questions, feel free to start it again.")
+        welcome_message = (
+            f"👋 Hello there! Welcome to the Widevine Extractor BOT.\n\n"
+            f"UserID: {user_id}\n"
+            f"Username: {username}\n\n"
+            # f"IP Address: {ip_address}\n"
+            # f"MAC Address: {mac_address}\n\n"
+            "Explore the following features:\n"
+            "- Need assistance? Just type /help anytime.\n\n"
+            f"- Maxis Sabah BOT: https://t.me/maxshits_bot\n"
+            f"- Author: https://t.me/SurpriseMTFK"
+        )
 
-        elif message.text.startswith('/about'):
-            bot.send_message(user_id, "🤖 Widevine Extractor BOT is designed to help you decrypt VOD content. "
-                                      "Feel free to explore its features.")
+        bot.send_message(chat_id, welcome_message, reply_markup=start_menu_markup)
+        logger.info(f"User {user_id} ({username}) started the bot.")
 
-        elif message.text.startswith('/help'):
-            send_help_message(message)
+    elif message.text.startswith('/stop'):
+        logger.info(f"User {user_id} stopped the bot.")
+        bot.send_message(message.chat.id, "⛔ The bot has been stopped. If you have questions, feel free to start it again.")
 
-        elif message.text.startswith('/payment'):
-            initiate_payment(message)
+    elif message.text.startswith('/about'):
+        logger.info(f"User {user_id} requested information about the bot.")
+        bot.send_message(message.chat.id, "🤖 Widevine Extractor BOT is designed to help you decrypt VOD content. "
+                                          "Feel free to explore its features.")
 
-    elif message.chat.type == 'group' or message.chat.type == 'supergroup':
-        if message.chat.id == -1002088593784:  # Check if it's the specific group ID
-            if message.text.startswith('/start'):
-                send_welcome_message(message)
+    elif message.text.startswith('/help'):
+        logger.info(f"User {user_id} requested help.")
+        help_message = (
+            "📋 Command list:\n"
+            "/start - Start the bot\n"
+            "/stop - Stop the bot\n"
+            "/about - About the bot\n"
+            "/help - Display this help message\n"
+            "/payment - Initiate a payment (coming soon)"
+        )
+        bot.send_message(message.chat.id, help_message)
+
+    elif message.text.startswith('/payment'):
+        logger.info(f"User {user_id} initiated a payment. (Payment feature coming soon)")
+
+        # Check if the user is authorized
+        if user_id not in AUTHORIZED_USER_IDS:
+            send_unauthorized_image(message.chat.id, user_id)
         else:
-            bot.reply_to(message, "🤖 This bot currently does not support group messages.")
-
-
-def send_welcome_message(message):
-    user_id, username, chat_id = message.from_user.id, message.from_user.username, message.chat.id
-    welcome_message = (
-        f"👋 Hello there! Welcome to the Widevine Extractor BOT.\n\n"
-        f"UserID: {user_id}\n"
-        f"Username: {username}\n\n"
-        "Explore the following features:\n"
-        "- Need assistance? Just type /help anytime.\n\n"
-        f"- Maxis Sabah BOT: https://t.me/maxshits_bot\n"
-        f"- Author: https://t.me/SurpriseMTFK"
-    )
-    bot.send_message(chat_id, welcome_message, reply_markup=start_menu_markup)
-    logger.info(f"User {user_id} ({username}) started the bot.")
-
-
-def send_help_message(message):
-    user_id = message.from_user.id
-    help_message = (
-        "📋 Command list:\n"
-        "/start - Start the bot\n"
-        "/stop - Stop the bot\n"
-        "/about - About the bot\n"
-        "/help - Display this help message\n"
-        "/payment - Initiate a payment (coming soon)"
-    )
-    bot.send_message(user_id, help_message)
-    logger.info(f"User {user_id} requested help.")
-
-
-def initiate_payment(message):
-    user_id = message.from_user.id
-    logger.info(f"User {user_id} initiated a payment. (Payment feature coming soon)")
-
-    # Check if the user is authorized
-    if user_id not in AUTHORIZED_USER_IDS:
-        send_unauthorized_image(message.chat.id, user_id)
-    else:
-        bot.send_message(user_id, "💳 The payment feature is currently under development. Stay tuned!")
-
+            bot.send_message(message.chat.id, "💳 The payment feature is currently under development. Stay tuned!")
 
 def send_unauthorized_image(chat_id, user_id):
     qr_code_path = 'qrcode.png'
@@ -127,15 +109,17 @@ def send_unauthorized_image(chat_id, user_id):
                     "Thank you for your cooperation!",
         )
 
-
 @bot.callback_query_handler(func=lambda call: True)
 def handle_callback_query(call):
     user_id = call.from_user.id
     chat_id = call.message.chat.id
 
+    # Remove the inline keyboard after any button is clicked
+    bot.edit_message_reply_markup(chat_id=chat_id, message_id=call.message.message_id, reply_markup=None)
+
     if call.data == 'astrogo_callback':
         logger.info(f"User {user_id} clicked 'ASTRO GOT' button.")
-        bot.send_message(chat_id, "🔒 Please provide your Bearer Token first,\nbefore using the next features.\n\n(formats: Bearer XXXXX)")
+        bot.send_message(user_id, "🔒 Please provide your Bearer Token first,\nbefore using the next features.\n\n(formats: Bearer XXXXX)")
         bot.register_next_step_handler(call.message, ask_bearer_token)
 
     elif call.data in ['single_decrypt', 'massive_decrypt', 'channel_decrypt']:
@@ -144,6 +128,7 @@ def handle_callback_query(call):
         else:
             logger.info(f"User {user_id} selected '{call.data.capitalize().replace('_', ' ')}' option.")
             msg = bot.send_message(chat_id, f"🔑 Please provide the {' '.join(call.data.split('_'))} URL/ID:")
+            # Menyiapkan keyboard options setelah pengguna memilih opsyen
             options_markup = types.InlineKeyboardMarkup(row_width=2)
             buttons = [
                 types.InlineKeyboardButton("🔑 Season/Episode Decrypt", callback_data='single_decrypt'),
@@ -156,54 +141,35 @@ def handle_callback_query(call):
     else:
         bot.edit_message_reply_markup(chat_id, call.message.message_id, reply_markup=None)
 
-
 def ask_bearer_token(message):
     user_id = message.from_user.id
-    chat_id = message.chat.id
-    bot.send_message(chat_id, "🔒 For avoid manipulation, please provide the same Bearer Token:\n\n(formats: Bearer XXXXX)")
-    bot.register_next_step_handler(message, lambda m: save_bearer_token(None, user_id, m))
+    bot.send_message(user_id, "🔒 For avoid manipulation, please provide the same Bearer Token:\n\n(formats: Bearer XXXXX)")
+    bot.register_next_step_handler(message, save_bearer_token)
 
-
-def save_bearer_token(call, user_id, message):
+def save_bearer_token(message):
+    user_id = message.from_user.id
     bearer_token = message.text.strip()
     token_data = {"JWTs": bearer_token}
-
-    keyboard = types.InlineKeyboardMarkup(row_width=2)
-    yes_button = types.InlineKeyboardButton("YES ✅", callback_data='save_token_yes')
-    no_button = types.InlineKeyboardButton("NO ❌", callback_data='save_token_no')
-    keyboard.add(yes_button, no_button)
-
-    confirmation_message = "Are you sure you want to save the Bearer Token?"
-    bot.send_message(user_id, confirmation_message, reply_markup=keyboard)
-
-    if call and call.data == 'save_token_yes':
-        temp_token_path = f"temp_token_{user_id}.json"
-        main_token_path = "bearer_token.json"
-        shutil.move(temp_token_path, main_token_path)
-
-        bot.send_message(user_id, "✅ Bearer Token saved successfully!")
-        options_markup = types.InlineKeyboardMarkup(row_width=2)
-        buttons = [
-            types.InlineKeyboardButton("🔑 Season/Episode Decrypt", callback_data='single_decrypt'),
-            types.InlineKeyboardButton("🎬 Movie Decrypt", callback_data='massive_decrypt'),
-            types.InlineKeyboardButton("📺 Channel Decrypt", callback_data='channel_decrypt'),
-        ]
-        options_markup.add(*buttons)
-        bot.send_message(user_id, "Choose the decryption option:", reply_markup=options_markup)
-
-    elif call and call.data == 'save_token_no':
-        bot.delete_message(user_id, message.message_id)
-        bot.send_message(user_id, "❌ Bearer Token not saved.", reply_markup=keyboard)
-    else:
-        bot.send_message(user_id, "Unexpected error occurred. Please try again later.")
-
+    with open("bearer_token.json", "w") as f:
+        json.dump(token_data, f)
+    bot.send_message(user_id, "✅ Bearer Token saved successfully!")
+    options_markup = types.InlineKeyboardMarkup(row_width=2)
+    buttons = [
+        types.InlineKeyboardButton("🔑 Season/Episode Decrypt", callback_data='single_decrypt'),
+        types.InlineKeyboardButton("🎬 Movie Decrypt", callback_data='massive_decrypt'),
+        types.InlineKeyboardButton("📺 Channel Decrypt", callback_data='channel_decrypt'),
+    ]
+    options_markup.add(*buttons)
+    bot.send_message(user_id, "Choose the decryption option:", reply_markup=options_markup)
 
 def perform_decrypt(user_id, message, options_markup, decrypt_type):
     try:
-        with open(f"temp_token_{user_id}.json", "r") as f:
+        # Read Bearer Token from JSON file
+        with open("bearer_token.json", "r") as f:
             token_data = json.load(f)
             bearer_token = token_data.get("JWTs", "")
 
+        # Determine payload based on the selected decryption type
         payload = {}
         endpoint = ""
 
@@ -217,7 +183,7 @@ def perform_decrypt(user_id, message, options_markup, decrypt_type):
             payload = {"channel_id": message.text, "JWTs": bearer_token}
             endpoint = f"{ENDPOINT}/dev/widevine/decryptChannel"
 
-        bot.send_message(user_id, "A request to explore content is being processed. This may take a while depending on the size of the content and your network speed. Thank you for your patience! ⏳")
+        bot.send_message(user_id, "🔍 Running...\n\nA request to explore content is being processed.\nThis may take a while depending on the size of the content and your network speed.\nThank you for your patience! ⏳")
 
         response = requests.post(endpoint, json=payload)
         response.raise_for_status()
@@ -226,7 +192,7 @@ def perform_decrypt(user_id, message, options_markup, decrypt_type):
         if response_data:
             key = response_data.get('key')
             kid = response_data.get('kid')
-            mpd_url = response_data.get('mpdURL')
+            mpd_url = response_data.get('mpdUrl')  # Corrected key access
 
             success_message = (
                 f"🔓 Decryption request successful!\n\n"
@@ -236,7 +202,7 @@ def perform_decrypt(user_id, message, options_markup, decrypt_type):
                 "You can use this information for further playback."
             )
 
-            bot.send_message(user_id, success_message)
+            bot.send_message(user_id, success_message, reply_markup=options_markup)
             logger.info(f"Decryption successful for user {user_id}: Key={key}, KID={kid}, MPD={mpd_url}")
         else:
             bot.send_message(user_id, "❌ Decryption response format is invalid. Please try again later.", reply_markup=options_markup)

@@ -36137,6 +36137,7 @@ information about how to avoid this problem.[0m
 [33m2024-02-07 00:33:07[0m - [32mW1DEV1NE - [36mINFO - [31mWIDEVINE BOT START[0m
 [33m2024-02-07 00:33:16[0m - [32mW1DEV1NE - [36mINFO - [31mUser 259790855 (SurpriseMTFK) started the bot.[0m
 [33m2024-02-07 00:33:20[0m - [32mW1DEV1NE - [36mINFO - [31mUser 259790855 clicked 'ASTRO GOT' button.[0m
+<<<<<<< HEAD
 [33m2024-02-07 00:45:22[0m - [32mW1DEV1NE - [36mINFO - [31mWIDEVINE BOT START[0m
 [33m2024-02-07 00:45:24[0m - [32mW1DEV1NE - [36mINFO - [31mUser 526348919 stopped the bot.[0m
 [33m2024-02-07 00:45:25[0m - [32mW1DEV1NE - [36mINFO - [31mUser 526348919 (CeIcom) started the bot.[0m
@@ -44027,3 +44028,10 @@ information about how to avoid this problem.[0m
 [33m2024-02-20 15:27:08[0m - [32mW1DEV1NE - [36mINFO - [31mUser 259790855 selected 'Single decrypt' option.[0m
 [33m2024-02-20 15:28:06[0m - [32mW1DEV1NE - [36mINFO - [31mUser 547095481 selected 'Massive decrypt' option.[0m
 [33m2024-02-20 15:28:11[0m - [32mW1DEV1NE - [36mERROR - [31mError sending KID Key request for user 547095481: 500 Server Error: Internal Server Error for url: https://kepala-pantas.xyz/dev/asteruk/widevine/movie[0m
+=======
+[33m2024-02-07 07:28:43[0m - [32mW1DEV1NE - [36mINFO - [31mWIDEVINE BOT START[0m
+[33m2024-02-07 07:30:00[0m - [32mW1DEV1NE - [36mINFO - [31mUser 259790855 stopped the bot.[0m
+[33m2024-02-07 07:30:17[0m - [32mW1DEV1NE - [36mINFO - [31mUser 259790855 (SurpriseMTFK) started the bot.[0m
+[33m2024-02-07 07:30:23[0m - [32mW1DEV1NE - [36mINFO - [31mUser 259790855 clicked 'ASTRO GOT' button.[0m
+[33m2024-02-07 07:30:31[0m - [32mW1DEV1NE - [36mINFO - [31mUser 259790855 selected 'Channel decrypt' option.[0m
+>>>>>>> 11333359309b6fb8421a14df740a3ac5266e0af1

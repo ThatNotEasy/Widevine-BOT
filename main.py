@@ -57,7 +57,11 @@ def handle_commands(message):
             # f"MAC Address: {mac_address}\n\n"
             "Explore the following features:\n"
             "- Need assistance? Just type /help anytime.\n\n"
+<<<<<<< HEAD
             # f"- Maxis Sabah BOT: https://t.me/maxshits_bot\n"
+=======
+            f"- Maxis Sabah BOT: https://t.me/maxshits_bot\n"
+>>>>>>> 11333359309b6fb8421a14df740a3ac5266e0af1
             f"- Author: https://t.me/SurpriseMTFK"
         )
 
@@ -90,7 +94,13 @@ def handle_commands(message):
 
         # Check if the user is authorized
         if user_id not in AUTHORIZED_USER_IDS:
+<<<<<<< HEAD
             send_unauthorized_image(message.chat.id, user_id)  # Sending unauthorized image directly
+=======
+            send_unauthorized_image(message.chat.id, user_id)
+        else:
+            bot.send_message(message.chat.id, "💳 The payment feature is currently under development. Stay tuned!")
+>>>>>>> 11333359309b6fb8421a14df740a3ac5266e0af1
 
 def send_unauthorized_image(chat_id, user_id):
     qr_code_path = 'qrcode.png'
@@ -117,7 +127,11 @@ def handle_callback_query(call):
 
     if call.data == 'astrogo_callback':
         logger.info(f"User {user_id} clicked 'ASTRO GOT' button.")
+<<<<<<< HEAD
         bot.send_message(user_id, "🔒 Please provide your Bearer Token first,\nbefore using the next features.\n\n(formats: eyraXXXX)")
+=======
+        bot.send_message(user_id, "🔒 Please provide your Bearer Token first,\nbefore using the next features.\n\n(formats: Bearer XXXXX)")
+>>>>>>> 11333359309b6fb8421a14df740a3ac5266e0af1
         bot.register_next_step_handler(call.message, ask_bearer_token)
 
     elif call.data == 'hotstar_callback':
@@ -149,10 +163,13 @@ def handle_callback_query(call):
     else:
         bot.edit_message_reply_markup(chat_id, call.message.message_id, reply_markup=None)
 
-
 def ask_bearer_token(message):
     user_id = message.from_user.id
+<<<<<<< HEAD
     bot.send_message(user_id, "🔒 For avoid manipulation, please provide the same Bearer Token:\n\n(formats: eyraXXXX)")
+=======
+    bot.send_message(user_id, "🔒 For avoid manipulation, please provide the same Bearer Token:\n\n(formats: Bearer XXXXX)")
+>>>>>>> 11333359309b6fb8421a14df740a3ac5266e0af1
     bot.register_next_step_handler(message, save_bearer_token)
 
 def save_bearer_token(message):
@@ -164,8 +181,13 @@ def save_bearer_token(message):
     bot.send_message(user_id, "✅ Bearer Token saved successfully!")
     options_markup = types.InlineKeyboardMarkup(row_width=2)
     buttons = [
+<<<<<<< HEAD
         types.InlineKeyboardButton("🔑 Season/Episode Decrypt", callback_data='series_decrypt'),
         types.InlineKeyboardButton("🎬 Movie Decrypt", callback_data='movie_decrypt'),
+=======
+        types.InlineKeyboardButton("🔑 Season/Episode Decrypt", callback_data='single_decrypt'),
+        types.InlineKeyboardButton("🎬 Movie Decrypt", callback_data='massive_decrypt'),
+>>>>>>> 11333359309b6fb8421a14df740a3ac5266e0af1
         types.InlineKeyboardButton("📺 Channel Decrypt", callback_data='channel_decrypt'),
     ]
     options_markup.add(*buttons)
@@ -220,6 +242,7 @@ def perform_decrypt(user_id, message, options_markup, decrypt_type):
         logger.error(f"Error sending KID Key request for user {user_id}: {e}")
         bot.send_message(user_id, "❌ An error occurred while processing your request. Please try again later.", reply_markup=options_markup)
 
+<<<<<<< HEAD
 while True:
     try:
         logger.info("WIDEVINE BOT START")
@@ -229,3 +252,9 @@ while True:
     except Exception as e:
         logger.error(f"An error occurred: {e}")
         logger.info("Restarting the bot...")
+=======
+logger.info("WIDEVINE BOT START")
+
+# Start polling
+bot.polling()
+>>>>>>> 11333359309b6fb8421a14df740a3ac5266e0af1

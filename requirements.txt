@@ -9,7 +9,7 @@ charset-normalizer==3.3.2
 colorama==0.4.6
 frozenlist==1.4.1
 getmac==0.9.4
-idna==3.6
+idna==3.7
 multidict==6.0.4
 pyTelegramBotAPI==4.15.4
 requests==2.31.0
